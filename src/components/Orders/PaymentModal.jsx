@@ -14,12 +14,79 @@ const PaymentModal = ({ order, onClose, onSuccess, preFilledCustomer }) => {
     else setMethod('Cash');
   }, [orderType]);
 
+  // ========== PRINT FUNCTION (with pop‑up, but catches blockers) ==========
   const printBill = (order, customer, paymentMethod) => {
-    // ... (same as before, unchanged)
+    const logoAbsoluteUrl = shopConfig.logoUrl ? `${window.location.origin}${shopConfig.logoUrl}` : '';
+    const printContent = `
+      <html>
+        <head>
+          <title>Bill Receipt</title>
+          <style>
+            body { font-family: monospace; width: 300px; margin: 0 auto; padding: 20px; }
+            .header { text-align: center; margin-bottom: 20px; }
+            .divider { border-top: 1px dashed #000; margin: 10px 0; }
+            .items { width: 100%; margin: 10px 0; }
+            .items th, .items td { text-align: left; padding: 5px 0; }
+            .footer { text-align: center; margin-top: 20px; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            ${logoAbsoluteUrl ? `<img src="${logoAbsoluteUrl}" style="width:80px; height:auto; margin-bottom:8px;" />` : ''}
+            <h2>${shopConfig.name}</h2>
+            <p>${shopConfig.address}</p>
+            <p>Phone: ${shopConfig.phone}</p>
+            <p>GST: ${shopConfig.gst}</p>
+          </div>
+          <div class="divider"></div>
+          <p><strong>Order #:</strong> ${order._id.slice(-6)}</p>
+          <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+          <p><strong>Customer:</strong> ${customer.name || 'N/A'} (${customer.phone || 'N/A'})</p>
+          <p><strong>Order Type:</strong> ${order.orderType} ${order.tableNumber ? `Table ${order.tableNumber}` : ''}</p>
+          <div class="divider"></div>
+          <table class="items">
+            <thead>
+              <tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr>
+            </thead>
+            <tbody>
+              ${order.items.map(item => `
+                <tr>
+                  <td>${item.name}</td>
+                  <td>${item.quantity}</td>
+                  <td>₹${item.unitPrice}</td>
+                  <td>₹${item.total}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div class="divider"></div>
+          <p><strong>Subtotal:</strong> ₹${order.subtotal}</p>
+          ${order.loyaltyApplied ? '<p><strong>Loyalty Discount (10%):</strong> Applied</p>' : ''}
+          <p><strong>Total:</strong> ₹${order.totalAmount}</p>
+          <p><strong>Payment Method:</strong> ${paymentMethod}</p>
+          <div class="divider"></div>
+          <div class="footer">
+            <p>Thank you for visiting us!</p>
+            <p>** Computer generated receipt **</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.print();
+      printWindow.onafterprint = () => printWindow.close();
+    } else {
+      alert('Please allow pop-ups for this site to print the bill.');
+    }
   };
+  // ========== END PRINT FUNCTION ==========
 
   const handlePayment = async () => {
-    // Only ask for details if they are not already provided and not Online
+    // For Dine-in/Takeaway, require customer details if not already provided
     if (orderType !== 'Online' && (!customer.name || !customer.phone)) {
       alert('Please enter name and phone number');
       return;
@@ -32,6 +99,7 @@ const PaymentModal = ({ order, onClose, onSuccess, preFilledCustomer }) => {
         customerName: customer.name,
         customerPhone: customer.phone
       });
+      // Auto‑print after successful payment
       printBill(order, customer, method);
       onSuccess();
     } catch (err) {
@@ -55,7 +123,7 @@ const PaymentModal = ({ order, onClose, onSuccess, preFilledCustomer }) => {
         <p>Total Amount: ₹{order.totalAmount}</p>
         {order.loyaltyApplied && <p style={{ color: '#ff9800' }}>🎉 Loyalty discount applied!</p>}
         
-        {/* Only show customer input fields if no preFilledCustomer and order is not Online */}
+        {/* Customer details fields – only show if not pre‑filled and not Online */}
         {orderType !== 'Online' && !preFilledCustomer && (
           <>
             <input
@@ -81,10 +149,19 @@ const PaymentModal = ({ order, onClose, onSuccess, preFilledCustomer }) => {
           style={{ width: '100%', marginBottom: '10px', background: '#2a2a2a', color: 'white', border: '1px solid #e53935' }}
           disabled={orderType === 'Online'}
         >
-          {orderType === 'Online' ? <option value="Online">Online</option> : <><option value="Cash">Cash</option><option value="UPI">UPI</option></>}
+          {orderType === 'Online' ? (
+            <option value="Online">Online</option>
+          ) : (
+            <>
+              <option value="Cash">Cash</option>
+              <option value="UPI">UPI</option>
+            </>
+          )}
         </select>
 
-        <button onClick={handlePayment} disabled={loading} style={{ background: '#e53935' }}>{loading ? 'Processing...' : 'Pay Now'}</button>
+        <button onClick={handlePayment} disabled={loading} style={{ background: '#e53935' }}>
+          {loading ? 'Processing...' : 'Pay Now'}
+        </button>
         <button onClick={onClose} style={{ background: '#666', marginTop: '10px' }}>Cancel</button>
       </div>
     </>

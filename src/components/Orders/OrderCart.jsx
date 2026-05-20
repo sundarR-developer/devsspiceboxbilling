@@ -99,7 +99,7 @@ const OrderCart = ({ cart, onUpdateQuantity, onRemove, orderType, tableNumber, d
             />
           </div>
 
-          <button onClick={handlePlaceOrderClick} disabled={placing} style={{ background: '#e53935' }}>
+          <button onClick={handlePlaceOrderClick} disabled={placing} style={{ background: '#e53935' , width: '100%', padding: '10px', fontSize: '16px', color: 'white' }}>
             {placing ? 'Placing order...' : 'Place Order & Pay'}
           </button>
           {placing && <p style={{ fontSize: '12px', marginTop: '5px' }}>Order sent to kitchen. Payment will open in 2 seconds...</p>}
